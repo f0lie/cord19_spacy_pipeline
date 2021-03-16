@@ -1,0 +1,20 @@
+# It seems like on windows you need Microsoft Studio C++ 14 compiler which is found here. https://visualstudio.microsoft.com/downloads/
+rpy2~=3.4.2
+
+# To run on windows, run python 3.8 not python 3.9
+scispacy~=0.4.0
+# This is for GPU usage. Need to install Cuda 11.1 beforehand to use it
+spacy[cuda111]~=3.0.3
+
+pandas~=1.2.2
+
+# Add the large package larger if need be
+#https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_lg-0.4.0.tar.gz
+#https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_ner_craft_md-0.4.0.tar.gz
+#https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_ner_jnlpba_md-0.4.0.tar.gz
+#https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_ner_bc5cdr_md-0.4.0.tar.gz
+#https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_ner_bionlp13cg_md-0.4.0.tar.gz
+
+https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_sm-0.4.0.tar.gz
+
+numpy~=1.20.1
