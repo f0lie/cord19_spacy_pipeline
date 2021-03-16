@@ -77,7 +77,7 @@ def get_pos(pipeline, text_df, file_name, compress=False) -> None:
         csv_file = open(file_name, 'wt', encoding='utf-8')
 
     csv_file.write("cord_uid,type,text\n")
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=1000, n_process=4):
+    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         result = ""
         for sent in doc.sents:
             result += "["
@@ -107,7 +107,7 @@ def get_dependencies(pipeline, text_df, file_name, compress=False) -> None:
     # type is whether it's the full_text or abstract
     # sentence is the serial id of the text that it belongs to
     csv_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=1000, n_process=4):
+    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         sentence = 0
         for sent in doc.sents:
             for token in sent:
