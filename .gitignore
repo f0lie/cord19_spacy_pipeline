@@ -130,3 +130,6 @@ dmypy.json
 
 README.txt
 misc_legacy
+
+.idea
+.vscode
