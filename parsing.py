@@ -1,20 +1,18 @@
 import gzip
-import os
 from collections import defaultdict
+
+import pandas
+# os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
+# os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
+import rpy2.robjects as robjects
 import spacy
+from rpy2.robjects import pandas2ri
 # noinspection PyUnresolvedReferences
 from scispacy.abbreviation import AbbreviationDetector
-import pandas
-
-#os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
-#os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
-import rpy2.robjects as robjects
-from rpy2.robjects import pandas2ri
-
-#import cProfile
 
 BATCH_SIZE = 1000
 N_PROCESS = 4
+
 
 def read_rds(input_filename: str) -> pandas.DataFrame:
     # Read RDS file and returns Dataframe
@@ -31,6 +29,15 @@ def write_rds(input_df, output_filename: str) -> None:
     robjects.r(f"save(my_df, file='{output_filename}')")
 
 
+def iter_row(input_df):
+    # Function to generate the tuples for nlp.pipe
+    # This is needed because pipe takes in an iterator of data. Usually people pass in the entire data structure
+    # directly but you can get very creative by creating a generator and passing that instead.
+    for _, row in input_df.iterrows():
+        yield str(row['abstract']), {"cord_uid": row["cord_uid"], "type": "abstract"}
+        yield str(row['full_text']), {"cord_uid": row["cord_uid"], "type": "full_text"}
+
+
 def get_abrv(pipeline, text_df, file_name, compress=False) -> None:
     # Given the spacy nlp and an pandas dataframe. Writes the results into file_name.
 
@@ -38,14 +45,15 @@ def get_abrv(pipeline, text_df, file_name, compress=False) -> None:
     # The first level is for cord_uid, it's more compact and easier to understand doing that
     # The second level is another dict to store the abbrevs of that document
     print("Finding abbreviations")
-    found_abrv = defaultdict(dict)  # When we add a new cord_uid, it makes a new dict. Simplifies code.
-    for _, row in text_df.iterrows():
-        doc = pipeline(str(row['abstract']) + str(row['full_text']))
+
+    found_abrv = defaultdict(dict)
+    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         for abbrev in doc._.abbreviations:
             # If the abbrev is not found, then add it to the dict.
             # Resolves dup issues when papers use the same abbrevs.
-            if abbrev._.long_form not in found_abrv[row['cord_uid']]:
-                found_abrv[row['cord_uid']][abbrev._.long_form] = abbrev.text
+            # Abstracts and full papers are jammed into the same cord_uid
+            if abbrev._.long_form not in found_abrv[context['cord_uid']]:
+                found_abrv[context['cord_uid']][abbrev._.long_form] = abbrev.text
 
     if compress:
         csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
@@ -58,15 +66,6 @@ def get_abrv(pipeline, text_df, file_name, compress=False) -> None:
             csv_file.write(f"{cord_uid},{text_abrv},\"{definition}\"\n")
 
     csv_file.close()
-
-
-def iter_row(input_df):
-    # Function to generate the tuples for nlp.pipe
-    # This is needed because pipe takes in an iterator of data. Usually people pass in the entire data structure
-    # directly but you can get very creative by creating a generator and passing that instead.
-    for _, row in input_df.iterrows():
-        yield str(row['abstract']), {"cord_uid": row["cord_uid"], "type": "abstract"}
-        yield str(row['full_text']), {"cord_uid": row["cord_uid"], "type": "full_text"}
 
 
 def get_pos(pipeline, text_df, file_name, compress=False) -> None:
@@ -130,8 +129,8 @@ if __name__ == "__main__":
 
     df = read_rds('parsing_test.rds')
 
-    # nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
-    # get_abrv(nlp, df, "data/found_abbreviations.csv")
+    nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
+    get_abrv(nlp, df, "data/found_abbreviations.csv")
     get_pos(nlp, df, "data/pos_tagged_text.csv")
     # cProfile.run('get_dependencies(nlp, df, "data/dependencies.csv")')
     get_dependencies(nlp, df, "data/dependencies.csv")
