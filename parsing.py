@@ -1,18 +1,19 @@
 import gzip
+import os
 from collections import defaultdict
-
-import pandas
-# os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
-# os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
-import rpy2.robjects as robjects
 import spacy
-from rpy2.robjects import pandas2ri
 # noinspection PyUnresolvedReferences
 from scispacy.abbreviation import AbbreviationDetector
+import pandas
+
+#os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
+#os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
+import rpy2.robjects as robjects
+from rpy2.robjects import pandas2ri
+
 
 BATCH_SIZE = 1000
 N_PROCESS = 4
-
 
 def read_rds(input_filename: str) -> pandas.DataFrame:
     # Read RDS file and returns Dataframe
@@ -45,8 +46,8 @@ def get_abrv(pipeline, text_df, file_name, compress=False) -> None:
     # The first level is for cord_uid, it's more compact and easier to understand doing that
     # The second level is another dict to store the abbrevs of that document
     print("Finding abbreviations")
+    found_abrv = defaultdict(dict)  # When we add a new cord_uid, it makes a new dict. Simplifies code.
 
-    found_abrv = defaultdict(dict)
     for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         for abbrev in doc._.abbreviations:
             # If the abbrev is not found, then add it to the dict.
