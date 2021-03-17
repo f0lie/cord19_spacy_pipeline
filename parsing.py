@@ -48,7 +48,7 @@ def get_abrv(pipeline, text_df, file_name, compress=False) -> None:
     print("Finding abbreviations")
     found_abrv = defaultdict(dict)  # When we add a new cord_uid, it makes a new dict. Simplifies code.
 
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
+    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE):
         for abbrev in doc._.abbreviations:
             # If the abbrev is not found, then add it to the dict.
             # Resolves dup issues when papers use the same abbrevs.
@@ -130,8 +130,14 @@ if __name__ == "__main__":
 
     df = read_rds('parsing_test.rds')
 
-    nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
-    get_abrv(nlp, df, "data/found_abbreviations.csv")
     get_pos(nlp, df, "data/pos_tagged_text.csv")
     # cProfile.run('get_dependencies(nlp, df, "data/dependencies.csv")')
     get_dependencies(nlp, df, "data/dependencies.csv")
+
+    # WARNING: Do not run abbreviation_detector with the other functions, it does not play nice with mutliple processes
+    # Manually removing it from the pipeline doesn't work either
+    # Add the pipe after you run the other two
+    # I think it's because it's scispacy's stuff not spacy
+    nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
+    get_abrv(nlp, df, "data/found_abbreviations.csv")
+    # nlp.remove_pipe("abbreviation_detector")
