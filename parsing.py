@@ -132,7 +132,7 @@ if __name__ == "__main__":
     # spacy.require_gpu()
     # nlp = spacy.load("en_core_sci_lg")
     # Note to self: do not turn off tok2vec because its needed for sentences
-    nlp = spacy.load("en_core_sci_sm", exclude=['ner'])
+    nlp = spacy.load("en_core_sci_lg", exclude=['ner'])
 
     # If you want it to be faster you can remove the parser
     # nlp = spacy.load("en_core_sci_sm", exclude=['parser', 'ner', 'tok2vec'])
@@ -140,9 +140,9 @@ if __name__ == "__main__":
 
     df = read_rds('parsing_test.rds')
 
-    # get_pos(nlp, df, "data/pos_tagged_text.csv")
+    get_pos(nlp, df, "data/pos_tagged_text.csv")
     # cProfile.run('get_dependencies(nlp, df, "data/dependencies.csv")')
-    # get_dependencies(nlp, df, "data/dependencies.csv")
+    get_dependencies(nlp, df, "data/dependencies.csv")
 
     # WARNING: Do not run abbreviation_detector with the other functions, it does not play nice with mutliple processes
     # Manually removing it from the pipeline doesn't work either
