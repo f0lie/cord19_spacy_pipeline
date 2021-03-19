@@ -41,43 +41,51 @@ def iter_row(input_df):
 
 def get_abrv(pipeline, text_df, file_name, compress=False) -> None:
     # Given the spacy nlp and an pandas dataframe. Writes the results into file_name.
-
-    # Used a dict to store abbrevs because it's very efficient, it can scale to millions of rows
-    # The first level is for cord_uid, it's more compact and easier to understand doing that
-    # The second level is another dict to store the abbrevs of that document
     print("Finding abbreviations")
-    found_abrv = defaultdict(dict)  # When we add a new cord_uid, it makes a new dict. Simplifies code.
-
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE):
-        for abbrev in doc._.abbreviations:
-            # If the abbrev is not found, then add it to the dict.
-            # Resolves dup issues when papers use the same abbrevs.
-            # Abstracts and full papers are jammed into the same cord_uid
-            if abbrev._.long_form not in found_abrv[context['cord_uid']]:
-                found_abrv[context['cord_uid']][abbrev._.long_form] = abbrev.text
-
     if compress:
         csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
     else:
         csv_file = open(file_name, 'wt', encoding='utf-8')
 
     csv_file.write("cord_uid,abbreviation,full_definition\n")
-    for cord_uid, abbrev in found_abrv.items():
-        for definition, text_abrv in abbrev.items():
-            csv_file.write(f"{cord_uid},{text_abrv},\"{definition}\"\n")
-
+    for row in abbrev_iter(pipeline, iter_row(text_df)):
+        csv_file.write(row)
     csv_file.close()
 
 
+def abbrev_iter(pipeline, test_iter):
+    # Generates the rows of the csv file from a iterator containing the data
+    for doc, context in pipeline.pipe(test_iter, as_tuples=True, batch_size=BATCH_SIZE):
+        # Finds all of the abbrevs on a coid_uid and type level. Abstracts and full text are treated differently.
+        found_abbrevs = defaultdict(str)
+        for abbrev in doc._.abbreviations:
+            if abbrev._.long_form not in found_abbrevs:
+                found_abbrevs[abbrev._.long_form] = abbrev.text
+
+        for definition, text_abrv in found_abbrevs.items():
+            yield f"{context['cord_uid']},{text_abrv},\"{definition}\"\n"
+
+
 def get_pos(pipeline, text_df, file_name, compress=False) -> None:
+    # Takes in Spacy pipeline with text data and outputs to file_name containing the results
     print("Finding part of speech.")
     if compress:
         csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
     else:
         csv_file = open(file_name, 'wt', encoding='utf-8')
 
+    # cord_uid refers to the cord_uid of the papers
+    # type refers to whether it's part of the abstract or full_text
+    # text the is POS tagged text. They are enclosed by [] so one could tell what's the length of sentences.
     csv_file.write("cord_uid,type,text\n")
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
+    for row in pos_iter(pipeline, iter_row(text_df)):
+        csv_file.write(row)
+    csv_file.close()
+
+
+def pos_iter(pipeline, text_iter):
+    # Generates a row of result that populates the output
+    for doc, context in pipeline.pipe(text_iter, as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         result = ""
         for sent in doc.sents:
             result += "["
@@ -85,9 +93,7 @@ def get_pos(pipeline, text_df, file_name, compress=False) -> None:
                 if token.is_alpha and not token.is_stop:
                     result += f"{token.lemma_}//{token.tag_},"
             result += "]"
-            csv_file.write(f'{context["cord_uid"]},{context["type"]},{result}\n')
-
-    csv_file.close()
+        yield f'{context["cord_uid"]},{context["type"]},{result}\n'
 
 
 def get_dependencies(pipeline, text_df, file_name, compress=False) -> None:
@@ -97,24 +103,28 @@ def get_dependencies(pipeline, text_df, file_name, compress=False) -> None:
     else:
         csv_file = open(file_name, 'wt', encoding='utf-8')
 
+    # The every row of the CSV file is a single word.
+    # type is whether it's the full_text or abstract
+    # sentence is the serial id of the text that it belongs to
+    csv_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
+    for row in dependencies_iter(pipeline, iter_row(text_df)):
+        csv_file.write(row)
+    csv_file.close()
+
+
+def dependencies_iter(pipeline, text_iter):
     # Makes the csv write less ugly and easier to understand
     def token_to_str(dep_tok):
         children = [f"{child}" for child in dep_tok.children]
         return f'"{dep_tok.text}",{dep_tok.dep_},"{dep_tok.pos_}",' \
                f'"{dep_tok.head.text}",{dep_tok.head.pos_},{children}\n'
 
-    # The every row of the CSV file is a single word.
-    # type is whether it's the full_text or abstract
-    # sentence is the serial id of the text that it belongs to
-    csv_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
+    for doc, context in pipeline.pipe(text_iter, as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         sentence = 0
         for sent in doc.sents:
             for token in sent:
-                csv_file.write(f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(token))
+                yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(token)
             sentence += 1
-
-    csv_file.close()
 
 
 if __name__ == "__main__":
@@ -130,9 +140,9 @@ if __name__ == "__main__":
 
     df = read_rds('parsing_test.rds')
 
-    get_pos(nlp, df, "data/pos_tagged_text.csv")
+    # get_pos(nlp, df, "data/pos_tagged_text.csv")
     # cProfile.run('get_dependencies(nlp, df, "data/dependencies.csv")')
-    get_dependencies(nlp, df, "data/dependencies.csv")
+    # get_dependencies(nlp, df, "data/dependencies.csv")
 
     # WARNING: Do not run abbreviation_detector with the other functions, it does not play nice with mutliple processes
     # Manually removing it from the pipeline doesn't work either
