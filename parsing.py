@@ -70,33 +70,11 @@ def abbrev_doc_iter(doc, context):
         yield f"{context['cord_uid']},{context['type']},{text_abrv},\"{definition}\"\n"
 
 
-def get_pos(pipeline, text_df, file_name, compress=False) -> None:
-    # Takes in Spacy pipeline with text data and outputs to file_name containing the results
-    print("Finding part of speech.")
-    if compress:
-        csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
-    else:
-        csv_file = open(file_name, 'wt', encoding='utf-8')
-
-    # cord_uid refers to the cord_uid of the papers
-    # type refers to whether it's part of the abstract or full_text
-    # text the is POS tagged text. They are enclosed by [] so one could tell what's the length of sentences.
-    csv_file.write("cord_uid,type,text\n")
-    for row in pos_iter(pipeline, iter_row(text_df)):
-        csv_file.write(row)
-    csv_file.close()
-
-
-def pos_iter(pipeline, text_iter):
-    # Generates a row of result that populates the output
-    for doc, context in pipeline.pipe(text_iter, as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
-        for row in pos_doc_iter(doc, context):
-            yield row
-
-
 def pos_doc_iter(doc, context):
+    # Takes in doc and context and outputs the CSV row of POS tagged words
     result = ""
     for sent in doc.sents:
+        # Sentences are limited by brackets so the length could be found
         result += "["
         for token in sent:
             if token.is_alpha and not token.is_stop:
@@ -105,32 +83,10 @@ def pos_doc_iter(doc, context):
     yield f'{context["cord_uid"]},{context["type"]},{result}\n'
 
 
-def get_dependencies(pipeline, text_df, file_name, compress=False) -> None:
-    print("Finding the dependencies")
-    if compress:
-        csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
-    else:
-        csv_file = open(file_name, 'wt', encoding='utf-8')
-
-    # The every row of the CSV file is a single word.
-    # type is whether it's the full_text or abstract
-    # sentence is the serial id of the text that it belongs to
-    csv_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
-    for row in dependencies_iter(pipeline, iter_row(text_df)):
-        csv_file.write(row)
-    csv_file.close()
-
-
-def dependencies_iter(pipeline, text_iter):
-    # Makes the csv write less ugly and easier to understand
-    for doc, context in pipeline.pipe(text_iter, as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
-        for row in dependencies_doc_iter(doc, context):
-            yield row
-
-
 def dependencies_doc_iter(doc, context):
-    # Takes Doc objects and returns CSV rows
+    # Takes Doc and context nd returns CSV rows of dependencies
     def token_to_str(dep_tok):
+        # Takes tokens and outputs the dependencies
         children = [f"{child}" for child in dep_tok.children]
         return f'"{dep_tok.text}",{dep_tok.dep_},"{dep_tok.pos_}",' \
                f'"{dep_tok.head.text}",{dep_tok.head.pos_},{children}\n'
@@ -142,36 +98,29 @@ def dependencies_doc_iter(doc, context):
         sentence += 1
 
 
-def dependency_file(file_name, compress=False):
+def get_file(file_name, compress=False):
+    # Takes in a file_name and returns either a gzip or normal file depending on compress flag
     if compress:
-        csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
+        return gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
     else:
-        csv_file = open(file_name, 'wt', encoding='utf-8')
-
-    csv_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
-    return csv_file
-
-
-def pos_file(file_name, compress=False):
-    print("Finding part of speech.")
-    if compress:
-        csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
-    else:
-        csv_file = open(file_name, 'wt', encoding='utf-8')
-
-    csv_file.write("cord_uid,type,text\n")
-    return csv_file
+        return open(file_name, 'wt', encoding='utf-8')
 
 
 def run(pipeline, text_df, dependency_file_name, pos_file_name, compress=False) -> None:
-    dep_file = dependency_file(dependency_file_name, compress)
-    pos_file_ = pos_file(pos_file_name, compress)
+    print("Finding dependencies")
+    dep_file = get_file(dependency_file_name, compress)
+    dep_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
+
+    print("Finding part of speech")
+    pos_file_ = get_file(pos_file_name, compress)
+    pos_file_.write("cord_uid,type,text\n")
 
     for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         for row in dependencies_doc_iter(doc, context):
             dep_file.write(row)
         for row in pos_doc_iter(doc, context):
             pos_file_.write(row)
+
     dep_file.close()
     pos_file_.close()
 
@@ -188,11 +137,10 @@ if __name__ == "__main__":
 
     df = read_rds('parsing_test.rds')
 
-    get_pos(nlp, df, "data/pos_tagged_text.csv")
     # cProfile.run('get_dependencies(nlp, df, "data/dependencies.csv")')
-    get_dependencies(nlp, df, "data/dependencies.csv")
 
-    #run(nlp, df, "data/dependencies.csv", "data/pos_tagged_text.csv")
+    run(nlp, df, "data/dependencies.csv", "data/pos_tagged_text.csv")
+
     # WARNING: Do not run abbreviation_detector with the other functions, it does not play nice with mutliple processes
     # Manually removing it from the pipeline doesn't work either
     # Add the pipe after you run the other two
