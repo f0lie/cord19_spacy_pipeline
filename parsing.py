@@ -1,15 +1,14 @@
 import gzip
-import os
 from collections import defaultdict
-import spacy
-# noinspection PyUnresolvedReferences
-from scispacy.abbreviation import AbbreviationDetector
-import pandas
 
+import pandas
 # os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
 # os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
 import rpy2.robjects as robjects
+import spacy
 from rpy2.robjects import pandas2ri
+# noinspection PyUnresolvedReferences
+from scispacy.abbreviation import AbbreviationDetector
 
 BATCH_SIZE = 1000
 N_PROCESS = 4
@@ -57,13 +56,18 @@ def abbrev_iter(pipeline, test_iter):
     # Generates the rows of the csv file from a iterator containing the data
     for doc, context in pipeline.pipe(test_iter, as_tuples=True, batch_size=BATCH_SIZE):
         # Finds all of the abbrevs on a coid_uid and type level. Abstracts and full text are treated differently.
-        found_abbrevs = defaultdict(str)
-        for abbrev in doc._.abbreviations:
-            if abbrev._.long_form not in found_abbrevs:
-                found_abbrevs[abbrev._.long_form] = abbrev.text
+        for row in abbrev_doc_iter(doc, context):
+            yield row
 
-        for definition, text_abrv in found_abbrevs.items():
-            yield f"{context['cord_uid']},{context['type']},{text_abrv},\"{definition}\"\n"
+
+def abbrev_doc_iter(doc, context):
+    found_abbrevs = defaultdict(str)
+    for abbrev in doc._.abbreviations:
+        if abbrev._.long_form not in found_abbrevs:
+            found_abbrevs[abbrev._.long_form] = abbrev.text
+
+    for definition, text_abrv in found_abbrevs.items():
+        yield f"{context['cord_uid']},{context['type']},{text_abrv},\"{definition}\"\n"
 
 
 def get_pos(pipeline, text_df, file_name, compress=False) -> None:
@@ -86,14 +90,19 @@ def get_pos(pipeline, text_df, file_name, compress=False) -> None:
 def pos_iter(pipeline, text_iter):
     # Generates a row of result that populates the output
     for doc, context in pipeline.pipe(text_iter, as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
-        result = ""
-        for sent in doc.sents:
-            result += "["
-            for token in sent:
-                if token.is_alpha and not token.is_stop:
-                    result += f"{token.lemma_}//{token.tag_},"
-            result += "]"
-        yield f'{context["cord_uid"]},{context["type"]},{result}\n'
+        for row in pos_doc_iter(doc, context):
+            yield row
+
+
+def pos_doc_iter(doc, context):
+    result = ""
+    for sent in doc.sents:
+        result += "["
+        for token in sent:
+            if token.is_alpha and not token.is_stop:
+                result += f"{token.lemma_}//{token.tag_},"
+        result += "]"
+    yield f'{context["cord_uid"]},{context["type"]},{result}\n'
 
 
 def get_dependencies(pipeline, text_df, file_name, compress=False) -> None:
@@ -114,17 +123,23 @@ def get_dependencies(pipeline, text_df, file_name, compress=False) -> None:
 
 def dependencies_iter(pipeline, text_iter):
     # Makes the csv write less ugly and easier to understand
+    for doc, context in pipeline.pipe(text_iter, as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
+        for row in dependencies_doc_iter(doc, context):
+            yield row
+
+
+def dependencies_doc_iter(doc, context):
+    # Takes Doc objects and returns CSV rows
     def token_to_str(dep_tok):
         children = [f"{child}" for child in dep_tok.children]
         return f'"{dep_tok.text}",{dep_tok.dep_},"{dep_tok.pos_}",' \
                f'"{dep_tok.head.text}",{dep_tok.head.pos_},{children}\n'
 
-    for doc, context in pipeline.pipe(text_iter, as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
-        sentence = 0
-        for sent in doc.sents:
-            for token in sent:
-                yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(token)
-            sentence += 1
+    sentence = 0
+    for sent in doc.sents:
+        for token in sent:
+            yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(token)
+        sentence += 1
 
 
 if __name__ == "__main__":
