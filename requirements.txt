@@ -1,3 +1,5 @@
+wheel
+
 # It seems like on windows you need Microsoft Studio C++ 14 compiler which is found here. https://visualstudio.microsoft.com/downloads/
 rpy2~=3.4.2
 
