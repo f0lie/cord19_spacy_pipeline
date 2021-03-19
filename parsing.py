@@ -63,7 +63,7 @@ def abbrev_iter(pipeline, test_iter):
                 found_abbrevs[abbrev._.long_form] = abbrev.text
 
         for definition, text_abrv in found_abbrevs.items():
-            yield f"{context['cord_uid']},{text_abrv},\"{definition}\"\n"
+            yield f"{context['cord_uid']},{context['type']},{text_abrv},\"{definition}\"\n"
 
 
 def get_pos(pipeline, text_df, file_name, compress=False) -> None:
@@ -130,9 +130,8 @@ def dependencies_iter(pipeline, text_iter):
 if __name__ == "__main__":
     print("Loading nlp pipeline")
     # spacy.require_gpu()
-    # nlp = spacy.load("en_core_sci_lg")
     # Note to self: do not turn off tok2vec because its needed for sentences
-    nlp = spacy.load("en_core_sci_lg", exclude=['ner'])
+    nlp = spacy.load("en_core_sci_sm", exclude=['ner'])
 
     # If you want it to be faster you can remove the parser
     # nlp = spacy.load("en_core_sci_sm", exclude=['parser', 'ner', 'tok2vec'])
