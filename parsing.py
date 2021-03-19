@@ -142,6 +142,40 @@ def dependencies_doc_iter(doc, context):
         sentence += 1
 
 
+def dependency_file(file_name, compress=False):
+    if compress:
+        csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
+    else:
+        csv_file = open(file_name, 'wt', encoding='utf-8')
+
+    csv_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
+    return csv_file
+
+
+def pos_file(file_name, compress=False):
+    print("Finding part of speech.")
+    if compress:
+        csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
+    else:
+        csv_file = open(file_name, 'wt', encoding='utf-8')
+
+    csv_file.write("cord_uid,type,text\n")
+    return csv_file
+
+
+def run(pipeline, text_df, dependency_file_name, pos_file_name, compress=False) -> None:
+    dep_file = dependency_file(dependency_file_name, compress)
+    pos_file_ = pos_file(pos_file_name, compress)
+
+    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
+        for row in dependencies_doc_iter(doc, context):
+            dep_file.write(row)
+        for row in pos_doc_iter(doc, context):
+            pos_file_.write(row)
+    dep_file.close()
+    pos_file_.close()
+
+
 if __name__ == "__main__":
     print("Loading nlp pipeline")
     # spacy.require_gpu()
@@ -158,10 +192,11 @@ if __name__ == "__main__":
     # cProfile.run('get_dependencies(nlp, df, "data/dependencies.csv")')
     get_dependencies(nlp, df, "data/dependencies.csv")
 
+    #run(nlp, df, "data/dependencies.csv", "data/pos_tagged_text.csv")
     # WARNING: Do not run abbreviation_detector with the other functions, it does not play nice with mutliple processes
     # Manually removing it from the pipeline doesn't work either
     # Add the pipe after you run the other two
     # I think it's because it's scispacy's stuff not spacy
-    nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
-    get_abrv(nlp, df, "data/found_abbreviations.csv")
+    # nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
+    # get_abrv(nlp, df, "data/found_abbreviations.csv")
     # nlp.remove_pipe("abbreviation_detector")
