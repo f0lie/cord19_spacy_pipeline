@@ -6,14 +6,14 @@ import spacy
 from scispacy.abbreviation import AbbreviationDetector
 import pandas
 
-#os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
-#os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
+# os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
+# os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
 
-
 BATCH_SIZE = 1000
 N_PROCESS = 4
+
 
 def read_rds(input_filename: str) -> pandas.DataFrame:
     # Read RDS file and returns Dataframe
