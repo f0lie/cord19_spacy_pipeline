@@ -10,8 +10,8 @@ from rpy2.robjects import pandas2ri
 # noinspection PyUnresolvedReferences
 from scispacy.abbreviation import AbbreviationDetector
 
-BATCH_SIZE = 1000
-N_PROCESS = 4
+BATCH_SIZE = 3
+N_PROCESS = -1
 
 
 def read_rds(input_filename: str) -> pandas.DataFrame:
