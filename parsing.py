@@ -1,4 +1,4 @@
-import gzip
+
 from collections import defaultdict
 
 import pandas
@@ -10,7 +10,7 @@ from rpy2.robjects import pandas2ri
 # noinspection PyUnresolvedReferences
 from scispacy.abbreviation import AbbreviationDetector
 
-BATCH_SIZE = 3
+BATCH_SIZE = 5
 N_PROCESS = -1
 
 
@@ -145,6 +145,6 @@ if __name__ == "__main__":
     # Manually removing it from the pipeline doesn't work either
     # Add the pipe after you run the other two
     # I think it's because it's scispacy's stuff not spacy
-    # nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
-    # get_abrv(nlp, df, "data/found_abbreviations.csv")
+    nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
+    get_abrv(nlp, df, "data/found_abbreviations.csv")
     # nlp.remove_pipe("abbreviation_detector")
