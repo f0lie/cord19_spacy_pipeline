@@ -6,7 +6,7 @@ rpy2~=3.4.2
 # To run on windows, run python 3.8 not python 3.9
 scispacy~=0.4.0
 # This is for GPU usage. Need to install Cuda 11.1 beforehand to use it
-spacy[cuda111]~=3.0.3
+#spacy[cuda111]~=3.0.3
 
 pandas~=1.2.2
 
