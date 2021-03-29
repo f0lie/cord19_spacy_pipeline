@@ -72,15 +72,15 @@ def abbrev_doc_iter(doc, context):
 
 def pos_doc_iter(doc, context):
     # Takes in doc and context and outputs the CSV row of POS tagged words
-    result = ""
+    sentence = 0
     for sent in doc.sents:
         # Sentences are limited by brackets so the length could be found
-        result += "["
+        result = ""
         for token in sent:
             if token.is_alpha and not token.is_stop:
-                result += f"{token.lemma_}//{token.tag_},"
-        result += "]"
-    yield f'{context["cord_uid"]},{context["type"]},{result}\n'
+                result += f"{token.lemma_}//{token.tag_} "
+        yield f'{context["cord_uid"]},{context["type"]},{sentence},{result}\n'
+        sentence += 1
 
 
 def dependencies_doc_iter(doc, context):
@@ -113,7 +113,7 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
 
     print("Finding part of speech")
     pos_file_ = get_file(pos_file_name, compress)
-    pos_file_.write("cord_uid,type,text\n")
+    pos_file_.write("cord_uid,type,sentence,sentence_tagged\n")
 
     print("Find abbreviation")
     abbrev_file = get_file(abbreviation_file_name, compress)
