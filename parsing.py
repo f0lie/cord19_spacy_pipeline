@@ -132,16 +132,13 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
 
 if __name__ == "__main__":
     print("Loading nlp pipeline")
+    # GPU does not work with multiprocessing
     # spacy.require_gpu()
 
     # Note to self: do not turn off tok2vec because its needed for sentences
     nlp = spacy.load("en_core_sci_sm", exclude=['ner'])
     nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
     nlp.add_pipe("serialize_abbreviation", after="abbreviation_detector")
-
-    # If you want it to be faster you can remove the parser
-    # nlp = spacy.load("en_core_sci_sm", exclude=['parser', 'ner', 'tok2vec'])
-    # nlp.add_pipe("sentencizer")
 
     df = read_rds('parsing_test.rds')
 
