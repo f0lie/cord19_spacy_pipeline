@@ -1,4 +1,4 @@
-
+import gzip
 from collections import defaultdict
 
 import pandas
@@ -38,7 +38,7 @@ def iter_row(input_df):
         yield str(row['full_text']), {"cord_uid": row["cord_uid"], "type": "full_text"}
 
 
-def get_abrv(pipeline, text_df, file_name, compress=False) -> None:
+def get_abbrev(pipeline, text_df, file_name, compress=False) -> None:
     # Given the spacy nlp and an pandas dataframe. Writes the results into file_name.
     print("Finding abbreviations")
     if compress:
@@ -146,5 +146,5 @@ if __name__ == "__main__":
     # Add the pipe after you run the other two
     # I think it's because it's scispacy's stuff not spacy
     nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
-    get_abrv(nlp, df, "data/found_abbreviations.csv")
+    get_abbrev(nlp, df, "data/found_abbreviations.csv")
     # nlp.remove_pipe("abbreviation_detector")
