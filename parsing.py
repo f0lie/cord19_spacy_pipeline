@@ -117,7 +117,7 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
 
     print("Find abbreviation")
     abbrev_file = get_file(abbreviation_file_name, compress)
-    abbrev_file.write("cord_uid,abbreviation,full_definition\n")
+    abbrev_file.write("cord_uid,type,abbreviation,full_definition\n")
 
     for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
         for row in dependencies_doc_iter(doc, context):
