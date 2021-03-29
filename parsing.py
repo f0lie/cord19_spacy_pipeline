@@ -11,9 +11,6 @@ from rpy2.robjects import pandas2ri
 # noinspection PyUnresolvedReferences
 from scispacy.abbreviation import AbbreviationDetector
 
-BATCH_SIZE = 5
-N_PROCESS = -1
-
 
 def read_rds(input_filename: str) -> pandas.DataFrame:
     # Read RDS file and returns Dataframe
@@ -107,7 +104,12 @@ def get_file(file_name, compress=False):
         return open(file_name, 'wt', encoding='utf-8')
 
 
-def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_file_name, compress=False) -> None:
+def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_file_name,
+        compress=False, batch_size=5, n_process=-1) -> None:
+    # Takes in a spacy pipeline, text file, and file names. Writes results to those file_names
+    # compress is a flag to output files to csv
+    # batch_size is the number of docs to cache for a process
+    # n_process is the number of processes to run
     print("Finding dependencies")
     dep_file = get_file(dependency_file_name, compress)
     dep_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
@@ -120,7 +122,7 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
     abbrev_file = get_file(abbreviation_file_name, compress)
     abbrev_file.write("cord_uid,type,abbreviation,full_definition\n")
 
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
+    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=batch_size, n_process=n_process):
         dep_file.writelines(dependencies_doc_iter(doc, context))
         pos_file_.writelines(pos_doc_iter(doc, context))
         abbrev_file.writelines(abbrev_doc_iter(doc, context))
