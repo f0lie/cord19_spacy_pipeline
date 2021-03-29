@@ -60,28 +60,6 @@ def replace_abbrev_with_json(spacy_doc):
     return spacy_doc
 
 
-def get_abbrev(pipeline, text_df, file_name, compress=False) -> None:
-    # Given the spacy nlp and an pandas dataframe. Writes the results into file_name.
-    print("Finding abbreviations")
-    if compress:
-        csv_file = gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
-    else:
-        csv_file = open(file_name, 'wt', encoding='utf-8')
-
-    csv_file.write("cord_uid,abbreviation,full_definition\n")
-    for row in abbrev_iter(pipeline, iter_row(text_df)):
-        csv_file.write(row)
-    csv_file.close()
-
-
-def abbrev_iter(pipeline, test_iter):
-    # Generates the rows of the csv file from a iterator containing the data
-    for doc, context in pipeline.pipe(test_iter, as_tuples=True, batch_size=BATCH_SIZE):
-        # Finds all of the abbrevs on a coid_uid and type level. Abstracts and full text are treated differently.
-        for row in abbrev_doc_iter(doc, context):
-            yield row
-
-
 def abbrev_doc_iter(doc, context):
     found_abbrevs = defaultdict(str)
     for abbrev in doc._.abbreviations:
@@ -156,6 +134,7 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
 if __name__ == "__main__":
     print("Loading nlp pipeline")
     # spacy.require_gpu()
+
     # Note to self: do not turn off tok2vec because its needed for sentences
     nlp = spacy.load("en_core_sci_sm", exclude=['ner'])
     nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
@@ -167,14 +146,4 @@ if __name__ == "__main__":
 
     df = read_rds('parsing_test.rds')
 
-    # cProfile.run('get_dependencies(nlp, df, "data/dependencies.csv")')
-
     run(nlp, df, "data/dependencies.csv", "data/pos_tagged_text.csv", "data/found_abbreviations.csv")
-
-    # WARNING: Do not run abbreviation_detector with the other functions, it does not play nice with mutliple processes
-    # Manually removing it from the pipeline doesn't work either
-    # Add the pipe after you run the other two
-    # I think it's because it's scispacy's stuff not spacy
-    #nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
-    #get_abbrev(nlp, df, "data/found_abbreviations.csv")
-    # nlp.remove_pipe("abbreviation_detector")
