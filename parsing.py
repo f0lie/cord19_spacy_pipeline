@@ -129,6 +129,7 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
 
     dep_file.close()
     pos_file_.close()
+    abbrev_file.close()
 
 
 if __name__ == "__main__":
