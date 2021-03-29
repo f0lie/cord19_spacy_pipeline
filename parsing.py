@@ -61,6 +61,7 @@ def replace_abbrev_with_json(spacy_doc):
 
 
 def abbrev_doc_iter(doc, context):
+    # Takes in a Doc and outputs the CSV row of abbreviation output
     found_abbrevs = defaultdict(str)
     for abbrev in doc._.abbreviations:
         if abbrev["long_text"] not in found_abbrevs:
@@ -71,7 +72,7 @@ def abbrev_doc_iter(doc, context):
 
 
 def pos_doc_iter(doc, context):
-    # Takes in doc and context and outputs the CSV row of POS tagged words
+    # Takes in a Doc and context and outputs the CSV row of POS tagged words
     sentence = 0
     for sent in doc.sents:
         # Sentences are limited by brackets so the length could be found
@@ -120,12 +121,9 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
     abbrev_file.write("cord_uid,type,abbreviation,full_definition\n")
 
     for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=BATCH_SIZE, n_process=N_PROCESS):
-        for row in dependencies_doc_iter(doc, context):
-            dep_file.write(row)
-        for row in pos_doc_iter(doc, context):
-            pos_file_.write(row)
-        for row in abbrev_doc_iter(doc, context):
-            abbrev_file.write(row)
+        dep_file.writelines(dependencies_doc_iter(doc, context))
+        pos_file_.writelines(pos_doc_iter(doc, context))
+        abbrev_file.writelines(abbrev_doc_iter(doc, context))
 
     dep_file.close()
     pos_file_.close()
