@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
     # Note to self: do not turn off tok2vec because its needed for sentences
     nlp = spacy.load("en_core_sci_sm", exclude=['ner'])
-    nlp.add_pipe("abbreviation_detector")  # load this pipeline before running get_abrv
+    nlp.add_pipe("abbreviation_detector")
     nlp.add_pipe("serialize_abbreviation", after="abbreviation_detector")
 
     df = read_rds('parsing_test.rds')
