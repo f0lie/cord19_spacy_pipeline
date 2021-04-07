@@ -137,3 +137,4 @@ misc_legacy
 # Data
 *.tar.gz
 2021*/
+data*/

@@ -144,4 +144,4 @@ if __name__ == "__main__":
 
     df = read_rds('parsing_test.rds')
 
-    run(nlp, df, "data/dependencies.csv", "data/pos_tagged_text.csv", "data/found_abbreviations.csv")
+    run(nlp, df, "output/dependencies.csv", "output/pos_tagged_text.csv", "output/found_abbreviations.csv")
