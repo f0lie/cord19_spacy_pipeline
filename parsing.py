@@ -2,20 +2,19 @@ import gzip
 from collections import defaultdict
 
 import pandas
-# os.environ['R_HOME'] = "C:/Program Files/R/R-4.0.4"
-# os.environ['PATH'] += "C:/Program Files/R/R-4.0.4/bin/x64;"
 import rpy2.robjects as robjects
 import spacy
-from spacy.language import Language
 from rpy2.robjects import pandas2ri
+
 # noinspection PyUnresolvedReferences
-from scispacy.abbreviation import AbbreviationDetector
+from scispacy.abbreviation import AbbreviationDetector  # noqa: F401
+from spacy.language import Language
 
 
 def read_rds(input_filename: str) -> pandas.DataFrame:
     # Read RDS file and returns Dataframe
     print("Reading RDS file.")
-    read_rds_function = robjects.r['readRDS']
+    read_rds_function = robjects.r["readRDS"]
     rds_file = read_rds_function(input_filename)
     return pandas2ri.rpy2py_dataframe(rds_file)
 
@@ -29,11 +28,12 @@ def write_rds(input_df, output_filename: str) -> None:
 
 def iter_row(input_df):
     # Function to generate the tuples for nlp.pipe
-    # This is needed because pipe takes in an iterator of data. Usually people pass in the entire data structure
+    # This is needed because pipe takes in an iterator of data.
+    # Usually people pass in the entire data structure
     # directly but you can get very creative by creating a generator and passing that instead.
     for _, row in input_df.iterrows():
-        yield str(row['abstract']), {"cord_uid": row["cord_uid"], "type": "abstract"}
-        yield str(row['full_text']), {"cord_uid": row["cord_uid"], "type": "full_text"}
+        yield str(row["abstract"]), {"cord_uid": row["cord_uid"], "type": "abstract"}
+        yield str(row["full_text"]), {"cord_uid": row["cord_uid"], "type": "full_text"}
 
 
 @Language.component("serialize_abbreviation")
@@ -49,8 +49,14 @@ def replace_abbrev_with_json(spacy_doc):
         long_text = long.text
         long_start = long.start
         long_end = long.end
-        serializable_abbr = {"short_text": short_text, "short_start": short_start, "short_end": short_end,
-                             "long_text": long_text, "long_start": long_start, "long_end": long_end}
+        serializable_abbr = {
+            "short_text": short_text,
+            "short_start": short_start,
+            "short_end": short_end,
+            "long_text": long_text,
+            "long_start": long_start,
+            "long_end": long_end,
+        }
         short._.long_form = None
         new_abbrevs.append(serializable_abbr)
     spacy_doc._.abbreviations = new_abbrevs
@@ -86,26 +92,38 @@ def dependencies_doc_iter(doc, context):
     def token_to_str(dep_tok):
         # Takes tokens and outputs the dependencies
         children = [f"{child}" for child in dep_tok.children]
-        return f'"{dep_tok.text}",{dep_tok.dep_},"{dep_tok.pos_}",' \
-               f'"{dep_tok.head.text}",{dep_tok.head.pos_},{children}\n'
+        return (
+            f'"{dep_tok.text}",{dep_tok.dep_},"{dep_tok.pos_}",'
+            f'"{dep_tok.head.text}",{dep_tok.head.pos_},{children}\n'
+        )
 
     sentence = 0
     for sent in doc.sents:
         for token in sent:
-            yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(token)
+            yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(
+                token
+            )
         sentence += 1
 
 
 def get_file(file_name, compress=False):
     # Takes in a file_name and returns either a gzip or normal file depending on compress flag
     if compress:
-        return gzip.open(file_name + ".gz", 'wt', encoding='utf-8')
+        return gzip.open(file_name + ".gz", "wt", encoding="utf-8")
     else:
-        return open(file_name, 'wt', encoding='utf-8')
+        return open(file_name, "wt", encoding="utf-8")
 
 
-def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_file_name,
-        compress=False, batch_size=5, n_process=-1) -> None:
+def run(
+    pipeline,
+    text_df,
+    dependency_file_name,
+    pos_file_name,
+    abbreviation_file_name,
+    compress=False,
+    batch_size=5,
+    n_process=-1,
+) -> None:
     # Takes in a spacy pipeline, text file, and file names. Writes results to those file_names
     # compress is a flag to output files to csv
     # batch_size is the number of docs to cache for a process
@@ -122,7 +140,9 @@ def run(pipeline, text_df, dependency_file_name, pos_file_name, abbreviation_fil
     abbrev_file = get_file(abbreviation_file_name, compress)
     abbrev_file.write("cord_uid,type,abbreviation,full_definition\n")
 
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=batch_size, n_process=n_process):
+    for doc, context in pipeline.pipe(
+        iter_row(text_df), as_tuples=True, batch_size=batch_size, n_process=n_process
+    ):
         dep_file.writelines(dependencies_doc_iter(doc, context))
         pos_file_.writelines(pos_doc_iter(doc, context))
         abbrev_file.writelines(abbrev_doc_iter(doc, context))
@@ -138,10 +158,16 @@ if __name__ == "__main__":
     # spacy.require_gpu()
 
     # Note to self: do not turn off tok2vec because its needed for sentences
-    nlp = spacy.load("en_core_sci_sm", exclude=['ner'])
+    nlp = spacy.load("en_core_sci_sm", exclude=["ner"])
     nlp.add_pipe("abbreviation_detector")
     nlp.add_pipe("serialize_abbreviation", after="abbreviation_detector")
 
-    df = read_rds('parsing_test.rds')
+    df = read_rds("parsing_test.rds")
 
-    run(nlp, df, "output/dependencies.csv", "output/pos_tagged_text.csv", "output/found_abbreviations.csv")
+    run(
+        nlp,
+        df,
+        "output/dependencies.csv",
+        "output/pos_tagged_text.csv",
+        "output/found_abbreviations.csv",
+    )
