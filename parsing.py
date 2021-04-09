@@ -100,9 +100,7 @@ def dependencies_doc_iter(doc, context):
     sentence = 0
     for sent in doc.sents:
         for token in sent:
-            yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(
-                token
-            )
+            yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(token)
         sentence += 1
 
 
@@ -140,9 +138,7 @@ def run(
     abbrev_file = get_file(abbreviation_file_name, compress)
     abbrev_file.write("cord_uid,type,abbreviation,full_definition\n")
 
-    for doc, context in pipeline.pipe(
-        iter_row(text_df), as_tuples=True, batch_size=batch_size, n_process=n_process
-    ):
+    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=batch_size, n_process=n_process):
         dep_file.writelines(dependencies_doc_iter(doc, context))
         pos_file_.writelines(pos_doc_iter(doc, context))
         abbrev_file.writelines(abbrev_doc_iter(doc, context))
