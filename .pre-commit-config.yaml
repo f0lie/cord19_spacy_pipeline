@@ -1,4 +1,4 @@
-exclude: 'data|output|.venv|.git|.tox'
+exclude: 'data|output|.venv|.git|.tox|.csv'
 default_stages: [commit]
 fail_fast: true
 repos:
