@@ -1,3 +1,4 @@
+import csv
 import gzip
 from collections import defaultdict
 
@@ -71,7 +72,7 @@ def abbrev_doc_iter(doc, context):
             found_abbrevs[abbrev["long_text"]] = abbrev["short_text"]
 
     for long_text, short_text in found_abbrevs.items():
-        yield f"{context['cord_uid']},{context['type']},{short_text},\"{long_text}\"\n"
+        yield context["cord_uid"], context["type"], short_text, long_text
 
 
 def pos_doc_iter(doc, context):
@@ -79,11 +80,9 @@ def pos_doc_iter(doc, context):
     sentence = 0
     for sent in doc.sents:
         # Sentences are limited by brackets so the length could be found
-        result = ""
-        for token in sent:
-            if token.is_alpha and not token.is_stop:
-                result += f"{token.lemma_}//{token.tag_} "
-        yield f'{context["cord_uid"]},{context["type"]},{sentence},{result}\n'
+        yield context["cord_uid"], context["type"], sentence, [
+            f"{token.lemma_}//{token.tag_}" for token in sent if token.is_alpha and not token.is_stop
+        ]
         sentence += 1
 
 
@@ -91,25 +90,24 @@ def dependencies_doc_iter(doc, context):
     # Takes Doc and context nd returns CSV rows of dependencies
     def token_to_str(dep_tok):
         # Takes tokens and outputs the dependencies
-        children = [f"{child}" for child in dep_tok.children]
-        return (
-            f'"{dep_tok.text}",{dep_tok.dep_},"{dep_tok.pos_}",'
-            f'"{dep_tok.head.text}",{dep_tok.head.pos_},{children}\n'
-        )
+        return dep_tok.text, dep_tok.dep_, dep_tok.pos_, dep_tok.head.text, dep_tok.head.pos_, list(dep_tok.children)
 
     sentence = 0
     for sent in doc.sents:
         for token in sent:
-            yield f"{context['cord_uid']},{context['type']},{sentence}," + token_to_str(token)
+            yield context["cord_uid"], context[
+                "type"
+            ], sentence, token.text, token.dep_, token.pos_, token.head.text, token.head.pos_, list(token.children)
         sentence += 1
 
 
 def get_file(file_name, compress=False):
     # Takes in a file_name and returns either a gzip or normal file depending on compress flag
     if compress:
-        return gzip.open(file_name + ".gz", "wt", encoding="utf-8")
+        file = gzip.open(file_name + ".gz", "wt", encoding="utf-8")
     else:
-        return open(file_name, "wt", encoding="utf-8")
+        file = open(file_name, "w")
+    return file, csv.writer(file)
 
 
 def run(
@@ -127,24 +125,24 @@ def run(
     # batch_size is the number of docs to cache for a process
     # n_process is the number of processes to run
     print("Finding dependencies")
-    dep_file = get_file(dependency_file_name, compress)
-    dep_file.write("cord_uid,type,sentence,text,dep,pos,head_text,head_pos,children\n")
+    dep_file, dep_writer = get_file(dependency_file_name, compress)
+    dep_writer.writerow(["cord_uid", "type", "sentence", "text", "dep", "pos", "head_text", "head_pos", "children"])
 
     print("Finding part of speech")
-    pos_file_ = get_file(pos_file_name, compress)
-    pos_file_.write("cord_uid,type,sentence,sentence_tagged\n")
+    pos_file, pos_writer = get_file(pos_file_name, compress)
+    pos_writer.writerow(["cord_uid", "type", "sentence", "sentence_tagged"])
 
     print("Find abbreviation")
-    abbrev_file = get_file(abbreviation_file_name, compress)
-    abbrev_file.write("cord_uid,type,abbreviation,full_definition\n")
+    abbrev_file, abbrev_writer = get_file(abbreviation_file_name, compress)
+    abbrev_writer.writerow(["cord_uid", "type", "abbreviation", "full_definition"])
 
     for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=batch_size, n_process=n_process):
-        dep_file.writelines(dependencies_doc_iter(doc, context))
-        pos_file_.writelines(pos_doc_iter(doc, context))
-        abbrev_file.writelines(abbrev_doc_iter(doc, context))
+        dep_writer.writerows(dependencies_doc_iter(doc, context))
+        pos_writer.writerows(pos_doc_iter(doc, context))
+        abbrev_writer.writerows(abbrev_doc_iter(doc, context))
 
     dep_file.close()
-    pos_file_.close()
+    pos_file.close()
     abbrev_file.close()
 
 
