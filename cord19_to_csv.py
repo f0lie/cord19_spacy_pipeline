@@ -1,14 +1,13 @@
 # Stolen and modified from here
 # https://github.com/allenai/cord19/blob/master/README.md
 import csv
-import os
 import json
-from collections import defaultdict
 
 # Location of unpacked files
 FILE_PATH = 'data/2021-02-15/'
 OUTPUT_PATH = 'data/cord19.csv'
-LIMIT = 1000
+# LIMIT = float('inf')
+LIMIT = 10000
 
 # open the file
 rows_read = 0
