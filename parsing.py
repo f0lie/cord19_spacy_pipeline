@@ -88,10 +88,6 @@ def pos_doc_iter(doc, context):
 
 def dependencies_doc_iter(doc, context):
     # Takes Doc and context nd returns CSV rows of dependencies
-    def token_to_str(dep_tok):
-        # Takes tokens and outputs the dependencies
-        return dep_tok.text, dep_tok.dep_, dep_tok.pos_, dep_tok.head.text, dep_tok.head.pos_, list(dep_tok.children)
-
     sentence = 0
     for sent in doc.sents:
         for token in sent:
