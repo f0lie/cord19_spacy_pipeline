@@ -5,7 +5,7 @@ import json
 
 # Location of unpacked files
 FILE_PATH = 'data/2021-02-15/'
-OUTPUT_PATH = 'data/cord19.csv'
+OUTPUT_PATH = 'sample_cord.csv'
 # LIMIT = float('inf')
 LIMIT = 10000
 

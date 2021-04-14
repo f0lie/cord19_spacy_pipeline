@@ -1,5 +1,6 @@
 import csv
 import gzip
+import time
 from collections import defaultdict
 
 import pandas
@@ -7,7 +8,6 @@ import rpy2.robjects as robjects
 import spacy
 from rpy2.robjects import pandas2ri
 
-# noinspection PyUnresolvedReferences
 from scispacy.abbreviation import AbbreviationDetector  # noqa: F401
 from spacy.language import Language
 
@@ -106,9 +106,10 @@ def get_file(file_name, compress=False):
     return file, csv.writer(file)
 
 
+# TODO: Maybe change the code so it uses a list of files and writers as opposed to putting everything in parameters
 def run(
     pipeline,
-    text_df,
+    iter_text,
     dependency_file_name,
     pos_file_name,
     abbreviation_file_name,
@@ -132,10 +133,18 @@ def run(
     abbrev_file, abbrev_writer = get_file(abbreviation_file_name, compress)
     abbrev_writer.writerow(["cord_uid", "type", "abbreviation", "full_definition"])
 
-    for doc, context in pipeline.pipe(iter_row(text_df), as_tuples=True, batch_size=batch_size, n_process=n_process):
+    start = time.time()
+    documents_processed = 0
+    for doc, context in pipeline.pipe(iter_text, as_tuples=True, batch_size=batch_size, n_process=n_process):
         dep_writer.writerows(dependencies_doc_iter(doc, context))
         pos_writer.writerows(pos_doc_iter(doc, context))
         abbrev_writer.writerows(abbrev_doc_iter(doc, context))
+        documents_processed += 1
+    end = time.time()
+    print(
+        f"{documents_processed} documents processed in {end - start: .2f} seconds. "
+        f"{documents_processed / (end - start): .2f} documents per second"
+    )
 
     dep_file.close()
     pos_file.close()
@@ -156,7 +165,7 @@ if __name__ == "__main__":
 
     run(
         nlp,
-        df,
+        iter_row(df),
         "output/dependencies.csv",
         "output/pos_tagged_text.csv",
         "output/found_abbreviations.csv",
