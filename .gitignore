@@ -138,3 +138,4 @@ misc_legacy
 *.tar.gz
 2021*/
 data*/
+sample_cord.csv
